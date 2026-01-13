@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Trash2, GripVertical } from 'lucide-react'
 
+
 // This defines what a Note looks like - it has an id, title, description, and date
 interface Note {
   id: string
