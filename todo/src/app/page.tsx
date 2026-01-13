@@ -2,6 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { Trash2, GripVertical } from 'lucide-react'
+import {
+  Box,
+  Heading,
+  Button,
+  Input,
+  Textarea,
+  VStack,
+  HStack,
+  Text,
+  IconButton,
+  Flex,
+  CloseButton,
+} from '@chakra-ui/react'
 
 
 // This defines what a Note looks like - it has an id, title, description, and date
@@ -23,11 +36,9 @@ export default function Home() {
   const [date, setDate] = useState('')
 
   // These store the filter values
-  const [filterTitle, setFilterTitle] = useState('')
-  const [filterDescription, setFilterDescription] = useState('')
-  const [filterYear, setFilterYear] = useState('')
-  const [filterMonth, setFilterMonth] = useState('')
-  const [filterExactDate, setFilterExactDate] = useState('')
+  const [searchQuery, setSearchQuery] = useState('') // Single search for title AND description
+  const [filterStartDate, setFilterStartDate] = useState('') // Start date for range filter
+  const [filterEndDate, setFilterEndDate] = useState('') // End date for range filter
 
   // This controls whether the "Add Note" form is visible
   const [showAddForm, setShowAddForm] = useState(false)
@@ -44,6 +55,19 @@ export default function Home() {
       setNotes(JSON.parse(savedNotes))
     }
   }, []) // Empty array means this only runs once when page loads
+
+  // useEffect to auto-fill date when Add Note form opens
+  useEffect(() => {
+    if (showAddForm && !date) {
+      // Get today's date in YYYY-MM-DD format (required for input type="date")
+      const today = new Date()
+      const year = today.getFullYear()
+      const month = String(today.getMonth() + 1).padStart(2, '0') // Month is 0-indexed
+      const day = String(today.getDate()).padStart(2, '0')
+      const todayFormatted = `${year}-${month}-${day}`
+      setDate(todayFormatted)
+    }
+  }, [showAddForm]) // Runs whenever showAddForm changes
 
   // This function saves notes to localStorage whenever they change
   const saveToLocalStorage = (notesToSave: Note[]) => {
@@ -127,480 +151,239 @@ export default function Home() {
 
   // Filter notes based on filter inputs
   const filteredNotes = notes.filter(note => {
-    // Check if note matches all filter criteria
-    const matchesTitle = note.title.toLowerCase().includes(filterTitle.toLowerCase())
-    const matchesDescription = note.description.toLowerCase().includes(filterDescription.toLowerCase())
+    // Check if note matches search query in EITHER title OR description
+    const matchesSearch = searchQuery === '' ||
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.description.toLowerCase().includes(searchQuery.toLowerCase())
 
-    // Date filtering logic
+    // Date range filtering logic
     let matchesDate = true
-    if (filterYear || filterMonth || filterExactDate) {
+    if (filterStartDate || filterEndDate) {
       const noteDate = new Date(note.date)
-      const noteYear = noteDate.getFullYear().toString()
-      const noteMonth = (noteDate.getMonth() + 1).toString().padStart(2, '0') // Month is 0-indexed
-      const noteYearMonth = `${noteYear}-${noteMonth}`
 
-      if (filterExactDate) {
-        // If exact date is provided, match exact date
-        matchesDate = note.date === filterExactDate
-      } else if (filterMonth) {
-        // If month is provided (format: YYYY-MM), match year and month
-        matchesDate = noteYearMonth === filterMonth
-      } else if (filterYear) {
-        // If only year is provided, match year
-        matchesDate = noteYear === filterYear
+      // Check if note date is on or after start date
+      if (filterStartDate) {
+        const startDate = new Date(filterStartDate)
+        matchesDate = matchesDate && noteDate >= startDate
+      }
+
+      // Check if note date is on or before end date
+      if (filterEndDate) {
+        const endDate = new Date(filterEndDate)
+        matchesDate = matchesDate && noteDate <= endDate
       }
     }
 
-    return matchesTitle && matchesDescription && matchesDate
+    return matchesSearch && matchesDate
   })
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      padding: '40px 20px',
-      backgroundColor: '#f5f5f5',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
-    }}>
-      <div style={{
-        maxWidth: '800px',
-        margin: '0 auto',
-        backgroundColor: 'white',
-        padding: '32px',
-        borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <h1 style={{
-          fontSize: '32px',
-          fontWeight: 'bold',
-          marginBottom: '24px',
-          color: '#333'
-        }}>
+    <Box minH="100vh" bg="gray.50" p={5}>
+      <Box maxW="container.md" mx="auto">
+        <Heading size="xl" mb={6} color="gray.800">
           My Notes ({notes.length}/5)
-        </h1>
+        </Heading>
 
         {/* Add Note Button/Form */}
-        <div style={{ marginBottom: '32px' }}>
-          {!showAddForm ? (
-            // Show button when form is hidden
-            <button
-              onClick={() => setShowAddForm(true)}
-              style={{
-                padding: '14px 24px',
-                backgroundColor: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                width: '100%'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
+        <Box mb={8}>
+          <Flex gap={4} align="start">
+            <Button
+              onClick={() => setShowAddForm(!showAddForm)}
+              colorScheme="green"
+              size="md"
+              minW="150px"
             >
               + Add New Note
-            </button>
-          ) : (
-            // Show form when button is clicked
-            <div style={{
-              padding: '24px',
-              backgroundColor: '#f9fafb',
-              borderRadius: '8px'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '16px'
-              }}>
-                <h2 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#555',
-                  margin: 0
-                }}>
-                  Add New Note
-                </h2>
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: '#999',
-                    padding: '0',
-                    lineHeight: '1'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = '#666'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
-                >
-                  ×
-                </button>
-              </div>
+            </Button>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <input
-                  type="text"
-                  placeholder="Title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  style={{
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    color: '#333'
-                  }}
-                />
+            {showAddForm && (
+              <Box bg="gray.50" p={6} borderRadius="lg" flex={1}>
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Heading size="md" color="gray.600">
+                    Add New Note
+                  </Heading>
+                  <CloseButton onClick={() => setShowAddForm(false)} />
+                </Flex>
 
-                <textarea
-                  placeholder="Description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  style={{
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    minHeight: '80px',
-                    resize: 'vertical',
-                    color: '#333'
-                  }}
-                />
+                <VStack gap={3}>
+                  <Input
+                    placeholder="Title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    bg="white"
+                  />
 
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  style={{
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    color: '#333'
-                  }}
-                />
+                  <Textarea
+                    placeholder="Description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    minH="80px"
+                    resize="vertical"
+                    bg="white"
+                  />
 
-                <button
-                  onClick={addNote}
-                  style={{
-                    padding: '12px',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
-                >
-                  Add Note
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    bg="white"
+                  />
+
+                  <Button
+                    onClick={addNote}
+                    colorScheme="blue"
+                    size="lg"
+                    width="full"
+                  >
+                    Add Note
+                  </Button>
+                </VStack>
+              </Box>
+            )}
+          </Flex>
+        </Box>
 
         {/* Filters Button/Section */}
-        <div style={{ marginBottom: '32px' }}>
-          {!showFilters ? (
-            // Show button when filters are hidden
-            <button
-              onClick={() => setShowFilters(true)}
-              style={{
-                padding: '14px 24px',
-                backgroundColor: '#8b5cf6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                width: '100%'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#8b5cf6'}
+        <Box mb={8}>
+          <Flex gap={4} align="start">
+            <Button
+              onClick={() => setShowFilters(!showFilters)}
+              colorScheme="purple"
+              size="md"
+              minW="150px"
             >
               🔍 Filter Notes
-            </button>
-          ) : (
-            // Show filters section when button is clicked
-            <div style={{
-              padding: '24px',
-              backgroundColor: '#f9fafb',
-              borderRadius: '8px'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '16px'
-              }}>
-                <h2 style={{
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  color: '#555',
-                  margin: 0
-                }}>
-                  Filters
-                </h2>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    fontSize: '24px',
-                    cursor: 'pointer',
-                    color: '#999',
-                    padding: '0',
-                    lineHeight: '1'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = '#666'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
-                >
-                  ×
-                </button>
-              </div>
+            </Button>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <input
-                  type="text"
-                  placeholder="Filter by title..."
-                  value={filterTitle}
-                  onChange={(e) => setFilterTitle(e.target.value)}
-                  style={{
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    color: '#333'
-                  }}
-                />
+            {showFilters && (
+              <Box bg="gray.50" p={6} borderRadius="lg" flex={1}>
+                <Flex justify="space-between" align="center" mb={4}>
+                  <Heading size="md" color="gray.600">
+                    Filters
+                  </Heading>
+                  <CloseButton onClick={() => setShowFilters(false)} />
+                </Flex>
 
-                <input
-                  type="text"
-                  placeholder="Filter by description..."
-                  value={filterDescription}
-                  onChange={(e) => setFilterDescription(e.target.value)}
-                  style={{
-                    padding: '10px',
-                    border: '1px solid #ddd',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    color: '#333'
-                  }}
-                />
-
-                {/* Date Filters Section */}
-                <div style={{
-                  marginTop: '8px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid #e5e7eb'
-                }}>
-                  <p style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#666',
-                    marginBottom: '12px'
-                  }}>
-                    Filter by Date (choose one):
-                  </p>
-
-                  <input
-                    type="number"
-                    placeholder="Filter by year (e.g., 2024)..."
-                    value={filterYear}
-                    onChange={(e) => {
-                      setFilterYear(e.target.value)
-                      setFilterMonth('')
-                      setFilterExactDate('')
-                    }}
-                    min="1900"
-                    max="2100"
-                    style={{
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      color: '#333',
-                      marginBottom: '12px',
-                      width: '100%'
-                    }}
+                <VStack gap={3}>
+                  <Input
+                    placeholder="Search notes by title or description..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    bg="white"
                   />
 
-                  <input
-                    type="month"
-                    placeholder="Filter by month and year..."
-                    value={filterMonth}
-                    onChange={(e) => {
-                      setFilterMonth(e.target.value)
-                      setFilterYear('')
-                      setFilterExactDate('')
-                    }}
-                    style={{
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      color: '#333',
-                      marginBottom: '12px',
-                      width: '100%'
-                    }}
-                  />
+                  {/* Date Range Filters Section */}
+                  <Box mt={2} pt={3} borderTop="1px" borderColor="gray.200" width="full">
+                    <Text fontSize="sm" fontWeight="600" color="gray.600" mb={3}>
+                      Filter by Date Range:
+                    </Text>
 
-                  <input
-                    type="date"
-                    placeholder="Filter by exact date..."
-                    value={filterExactDate}
-                    onChange={(e) => {
-                      setFilterExactDate(e.target.value)
-                      setFilterYear('')
-                      setFilterMonth('')
-                    }}
-                    style={{
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      color: '#333',
-                      width: '100%'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+                    <Flex gap={3}>
+                      <Box flex={1}>
+                        <Text fontSize="xs" color="gray.500" mb={1}>
+                          Start Date
+                        </Text>
+                        <Input
+                          type="date"
+                          value={filterStartDate}
+                          onChange={(e) => setFilterStartDate(e.target.value)}
+                          bg="white"
+                          size="sm"
+                        />
+                      </Box>
+
+                      <Box flex={1}>
+                        <Text fontSize="xs" color="gray.500" mb={1}>
+                          End Date
+                        </Text>
+                        <Input
+                          type="date"
+                          value={filterEndDate}
+                          onChange={(e) => setFilterEndDate(e.target.value)}
+                          bg="white"
+                          size="sm"
+                        />
+                      </Box>
+                    </Flex>
+                  </Box>
+                </VStack>
+              </Box>
+            )}
+          </Flex>
+        </Box>
 
         {/* Notes List */}
-        <div>
-          <h2 style={{
-            fontSize: '20px',
-            fontWeight: '600',
-            marginBottom: '16px',
-            color: '#555'
-          }}>
+        <Box>
+          <Heading size="md" mb={4} color="gray.600">
             My Notes
-          </h2>
+          </Heading>
 
           {filteredNotes.length === 0 ? (
-            <p style={{
-              textAlign: 'center',
-              color: '#999',
-              padding: '40px',
-              fontStyle: 'italic'
-            }}>
+            <Text textAlign="center" color="gray.400" py={10} fontStyle="italic">
               No notes found. {notes.length > 0 ? 'Try adjusting your filters.' : 'Add your first note above!'}
-            </p>
+            </Text>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <VStack gap={4}>
               {filteredNotes.map((note, index) => (
-                <div
+                <Box
                   key={note.id}
+                  width="full"
                   draggable
-                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragStart={(e: React.DragEvent<HTMLDivElement>) => handleDragStart(e, index)}
                   onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                  style={{
-                    padding: '20px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    backgroundColor: 'white',
-                    position: 'relative',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                    cursor: 'move'
-                  }}
+                  onDrop={(e: React.DragEvent<HTMLDivElement>) => handleDrop(e, index)}
+                  cursor="move"
+                  bg="white"
+                  p={2}
+                  borderRadius="lg"
+                  borderWidth="1px"
+                  borderColor="gray.200"
+                  _hover={{ boxShadow: 'md' }}
+                  transition="all 0.2s"
                 >
-                  <div style={{
-                    display: 'flex',
-                    gap: '12px',
-                    marginBottom: '12px'
-                  }}>
+                  <Flex gap={2} mb={0.5}>
                     {/* Drag Handle */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: '#999',
-                      cursor: 'grab'
-                    }}>
-                      <GripVertical size={20} />
-                    </div>
+                    <Box display="flex" alignItems="center" color="gray.400" cursor="grab">
+                      <GripVertical size={16} />
+                    </Box>
 
                     {/* Content */}
-                    <div style={{
-                      flex: 1,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'start'
-                    }}>
-                      <h3 style={{
-                        fontSize: '18px',
-                        fontWeight: '600',
-                        color: '#333',
-                        margin: 0
-                      }}>
+                    <Flex flex={1} justify="space-between" align="start">
+                      <Heading size="sm" color="gray.800">
                         {note.title}
-                      </h3>
+                      </Heading>
 
-                      <button
+                      <Button
                         onClick={() => deleteNote(note.id)}
-                        style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '8px 12px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                        colorScheme="red"
+                        size="sm"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={16} style={{ marginRight: '6px' }} />
                         Delete
-                      </button>
-                    </div>
-                  </div>
+                      </Button>
+                    </Flex>
+                  </Flex>
 
-                  {/* Description and Date - aligned with content */}
-                  <div style={{ marginLeft: '32px' }}>
-                    <p style={{
-                      color: '#666',
-                      marginBottom: '12px',
-                      lineHeight: '1.5'
-                    }}>
+                  {/* Description and Date */}
+                  <Box ml={6}>
+                    <Text color="gray.600" mb={0.5} lineHeight="short" fontSize="sm">
                       {note.description}
-                    </p>
+                    </Text>
 
-                    <p style={{
-                      fontSize: '14px',
-                      color: '#999',
-                      margin: 0
-                    }}>
+                    <Text fontSize="xs" color="gray.400">
                       📅 {new Date(note.date).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
                       })}
-                    </p>
-                  </div>
-                </div>
+                    </Text>
+                  </Box>
+                </Box>
               ))}
-            </div>
+            </VStack>
           )}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   )
 }
