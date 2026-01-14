@@ -2,10 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import Link from "next/link";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -20,19 +28,20 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      // Use NextAuth signIn with credentials provider
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false, // Handle redirect manually for better error handling
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (result?.error) {
+        // Display the error message from the authorize function
+        setError(result.error);
+      } else if (result?.ok) {
+        // Successful login - redirect to dashboard
         router.push("/dashboard");
         router.refresh();
-      } else {
-        setError(data.message || "Invalid email or password");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
@@ -56,7 +65,7 @@ export function LoginForm() {
             <Input
               id="email"
               type="email"
-              placeholder="william@gmail.com"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -78,7 +87,7 @@ export function LoginForm() {
           </div>
 
           {error && (
-            <div className="text-sm text-destructive">
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
@@ -86,6 +95,13 @@ export function LoginForm() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Logging in..." : "Login"}
           </Button>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link href="/signup" className="text-primary hover:underline">
+              Sign up
+            </Link>
+          </p>
         </form>
       </CardContent>
     </Card>

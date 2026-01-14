@@ -1,23 +1,26 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getIronSession } from "iron-session";
-import { SessionData, sessionOptions } from "./lib/session";
+import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
-  const session = await getIronSession<SessionData>(request.cookies, sessionOptions);
+  // Get the NextAuth JWT token
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
   const { pathname } = request.nextUrl;
 
-  // If user is trying to access /dashboard but not logged in, redirect to /login
+  // Protected routes - require authentication
   if (pathname.startsWith("/dashboard")) {
-    if (!session.isLoggedIn) {
+    if (!token) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
-  // If user is trying to access /login but already logged in, redirect to /dashboard
-  if (pathname.startsWith("/login")) {
-    if (session.isLoggedIn) {
+  // Auth pages - redirect to dashboard if already logged in
+  if (pathname.startsWith("/login") || pathname.startsWith("/signup")) {
+    if (token) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
@@ -26,5 +29,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/login", "/signup"],
 };
